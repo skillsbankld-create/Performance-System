@@ -1,0 +1,1284 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>L&amp;D Pulse — Skills Bank</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.112.1/dist/umd/supabase.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<link rel="preconnect" href="https://cdn.jsdelivr.net">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@500;700;800;900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    /* brand palette */
+    --bg:#080828;
+    --surface:#0E1038;
+    --surface-2:#151848;
+    --surface-3:#1D2158;
+    --border:#2B2F6B;
+    --text:#EBF4FF;
+    --text-dim:#9AA3D6;
+    --text-faint:#666EA0;
+    --teal:#40BDA9;
+    --teal-dim:rgba(64,189,169,.16);
+    --amber:#FFBC3A;
+    --amber-dim:rgba(255,188,58,.16);
+    --rose:#F26A44;
+    --rose-dim:rgba(242,106,68,.16);
+    --indigo:#4D88E8;
+    --indigo-dim:rgba(77,136,232,.18);
+    --radius:14px;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:
+      radial-gradient(1100px 550px at 85% -10%, rgba(77,136,232,.10), transparent 60%),
+      radial-gradient(900px 500px at -10% 10%, rgba(64,189,169,.06), transparent 55%),
+      var(--bg);
+    color:var(--text);
+    font-family:'Inter',sans-serif;
+    min-height:100vh;
+  }
+  h1,h2,h3,.display{font-family:'Cairo',sans-serif;}
+  ::selection{background:var(--indigo-dim);}
+  a{color:inherit;}
+  button{font-family:inherit;}
+  input,select{font-family:inherit;}
+
+  .shell{display:flex;min-height:100vh;}
+  .sidebar{
+    width:250px;flex:0 0 250px;
+    background:linear-gradient(180deg, var(--surface), rgba(18,27,46,.7));
+    border-right:1px solid var(--border);
+    padding:22px 18px;display:flex;flex-direction:column;gap:26px;
+    position:sticky;top:0;height:100vh;overflow-y:auto;
+  }
+  .brand{display:flex;flex-direction:column;gap:8px;padding:0 4px;}
+  .brand-logo{width:100%;max-width:190px;height:auto;display:block;}
+  .brand .sub{font-size:11.5px;color:var(--text-faint);}
+
+  nav.nav{display:flex;flex-direction:column;gap:4px;}
+  .nav button{
+    all:unset;cursor:pointer;display:flex;align-items:center;gap:10px;
+    padding:10px 12px;border-radius:10px;color:var(--text-dim);font-size:14.5px;font-weight:500;
+    transition:.15s;
+  }
+  .nav button:hover{background:var(--surface-2);color:var(--text);}
+  .nav button.active{background:var(--indigo-dim);color:#C8CEFF;font-weight:700;}
+  .nav button .ic{width:17px;text-align:center;opacity:.85;font-size:14px;}
+
+  .sidebar-foot{margin-top:auto;font-size:11px;color:var(--text-faint);padding:0 4px;line-height:1.7;}
+
+  main{flex:1;padding:30px 34px 60px;max-width:1320px;}
+  .page-head{display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:22px;flex-wrap:wrap;gap:14px;}
+  .page-head h1{font-size:23px;margin:0 0 4px;font-weight:800;}
+  .page-head p{margin:0;color:var(--text-dim);font-size:13.5px;}
+
+  .kpi-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px;margin-bottom:22px;}
+  .kpi{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:16px 17px;position:relative;overflow:hidden;}
+  .kpi .lbl{font-size:12px;color:var(--text-dim);margin-bottom:8px;}
+  .kpi .val{font-family:'Cairo',sans-serif;font-size:25px;font-weight:800;}
+  .kpi .val small{font-size:13px;color:var(--text-dim);font-weight:500;margin-left:3px;}
+  .kpi.teal{border-color:rgba(64,189,169,.35);}
+  .kpi.teal .val{color:var(--teal);}
+  .kpi.rose .val{color:var(--rose);}
+  .kpi.amber .val{color:var(--amber);}
+  .kpi.indigo{border-color:rgba(77,136,232,.35);}
+  .kpi.indigo .val{color:var(--indigo);}
+
+  .card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:20px;margin-bottom:20px;position:relative;overflow:hidden;}
+  .card h3{margin:0 0 3px;font-size:15.5px;font-weight:700;}
+  .card .hint{font-size:12.5px;color:var(--text-dim);margin:0 0 16px;}
+  .card.accent-indigo{border-top:3px solid var(--indigo);}
+  .card.accent-teal{border-top:3px solid var(--teal);}
+  .card.accent-amber{border-top:3px solid var(--amber);}
+  .card.accent-rose{border-top:3px solid var(--rose);}
+  .card.accent-indigo::before,.card.accent-teal::before,.card.accent-amber::before,.card.accent-rose::before{
+    content:'';position:absolute;top:-40px;right:-40px;width:120px;height:120px;border-radius:50%;
+    background:radial-gradient(circle, currentColor, transparent 70%);opacity:.06;pointer-events:none;
+  }
+  .card.accent-indigo::before{color:var(--indigo);}
+  .card.accent-teal::before{color:var(--teal);}
+  .card.accent-amber::before{color:var(--amber);}
+  .card.accent-rose::before{color:var(--rose);}
+
+  .pulse-wrap{position:relative;background:linear-gradient(180deg, var(--surface), var(--surface-2));border:1px solid var(--border);border-radius:var(--radius);padding:22px 22px 16px;margin-bottom:22px;overflow:hidden;}
+  .pulse-wrap .pulse-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;}
+  .pulse-wrap .pulse-title{font-family:'Cairo',sans-serif;font-weight:800;font-size:15px;display:flex;align-items:center;gap:8px;}
+  .pulse-wrap .pulse-title .live{width:8px;height:8px;border-radius:50%;background:var(--teal);box-shadow:0 0 10px var(--teal);animation:blip 1.6s infinite;}
+  @keyframes blip{0%,100%{opacity:1;}50%{opacity:.25;}}
+  .pulse-status{font-size:12.5px;color:var(--text-dim);}
+  .pulse-bars{display:flex;align-items:flex-end;gap:3px;height:70px;position:relative;}
+  .pulse-bar{flex:1;min-width:3px;border-radius:3px 3px 0 0;background:var(--surface-3);transition:.3s;}
+  .pulse-sweep{position:absolute;inset:0;pointer-events:none;background:linear-gradient(90deg, transparent, rgba(255,255,255,.06), transparent);width:40%;animation:sweep 3.2s linear infinite;}
+  @keyframes sweep{0%{transform:translateX(-120%);}100%{transform:translateX(320%);}}
+  .pulse-empty{color:var(--text-faint);font-size:13px;padding:14px 2px;}
+
+  table{width:100%;border-collapse:collapse;font-size:13.5px;}
+  table.table-sm{font-size:11.5px;}
+  table.table-sm th{padding:5px 8px;font-size:10px;}
+  table.table-sm td{padding:5px 8px;}
+  th{text-align:left;color:var(--text-dim);font-weight:600;font-size:11.5px;text-transform:uppercase;letter-spacing:.3px;padding:9px 10px;border-bottom:1px solid var(--border);}
+  td{padding:11px 10px;border-bottom:1px solid rgba(37,48,83,.6);vertical-align:middle;}
+  tr:last-child td{border-bottom:none;}
+  tr.rowlink{cursor:pointer;transition:.12s;}
+  tr.rowlink:hover{background:var(--surface-2);}
+  .rank{display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;border-radius:7px;background:var(--surface-3);font-weight:700;font-size:12px;color:var(--text-dim);}
+  .rank.gold{background:linear-gradient(135deg,#F5C453,#C9862B);color:#2a1a02;}
+  .rank.silver{background:linear-gradient(135deg,#D9E1EE,#9AA7C0);color:#1a2233;}
+  .rank.bronze{background:linear-gradient(135deg,#E3A06B,#A15C2E);color:#2a1503;}
+  .who{display:flex;align-items:center;gap:9px;}
+  .avatar{width:30px;height:30px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:12.5px;font-family:'Cairo',sans-serif;flex:0 0 30px;overflow:hidden;}
+  .who .nm{font-weight:600;}
+  .who .rl{font-size:11.5px;color:var(--text-faint);}
+
+  .badge{display:inline-flex;align-items:center;gap:4px;padding:3px 9px;border-radius:20px;font-size:12px;font-weight:700;font-family:'Cairo',sans-serif;}
+  .badge.pos{background:var(--teal-dim);color:var(--teal);}
+  .badge.neg{background:var(--rose-dim);color:var(--rose);}
+  .badge.zero{background:var(--surface-3);color:var(--text-dim);}
+  .badge.amber{background:var(--amber-dim);color:var(--amber);}
+  .tag{display:inline-block;padding:3px 9px;border-radius:7px;background:var(--surface-3);color:var(--text-dim);font-size:11.5px;}
+  .status-pill{padding:3px 10px;border-radius:20px;font-size:11.5px;font-weight:600;}
+  .status-pill.open{background:var(--amber-dim);color:var(--amber);}
+  .status-pill.done{background:var(--teal-dim);color:var(--teal);}
+  .status-pill.overdue{background:var(--rose-dim);color:var(--rose);}
+  .status-pill.pending{background:var(--indigo-dim);color:var(--indigo);}
+
+  .bar-row{display:grid;grid-template-columns:150px 1fr 60px;align-items:center;gap:10px;margin-bottom:10px;font-size:13px;}
+  .bar-track{height:9px;background:var(--surface-3);border-radius:6px;overflow:hidden;position:relative;}
+  .bar-fill{height:100%;border-radius:6px;}
+
+  .btn{all:unset;cursor:pointer;display:inline-flex;align-items:center;gap:7px;padding:9px 16px;border-radius:9px;font-size:13.5px;font-weight:700;transition:.15s;}
+  .btn-primary{background:var(--indigo);color:#fff;}
+  .btn-primary:hover{background:#3f78d9;}
+  .btn-ghost{background:var(--surface-2);color:var(--text);border:1px solid var(--border);}
+  .btn-ghost:hover{background:var(--surface-3);}
+  .btn-danger{background:var(--rose-dim);color:var(--rose);}
+  .btn-danger:hover{background:rgba(242,106,68,.28);}
+  .btn-sm{padding:6px 11px;font-size:12.5px;border-radius:7px;}
+  .btn:disabled{opacity:.4;cursor:not-allowed;}
+
+  .form-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px;align-items:end;}
+  label{display:block;font-size:12px;color:var(--text-dim);margin-bottom:6px;font-weight:600;}
+  input[type=text],input[type=number],input[type=date],input[type=password],select,textarea{
+    width:100%;background:var(--surface-2);border:1px solid var(--border);color:var(--text);
+    padding:10px 11px;border-radius:9px;font-size:13.5px;outline:none;transition:.15s;
+  }
+  input:focus,select:focus,textarea:focus{border-color:var(--indigo);box-shadow:0 0 0 3px var(--indigo-dim);}
+  .form-actions{display:flex;gap:8px;margin-top:14px;}
+
+  .empty-state{padding:34px 20px;text-align:center;color:var(--text-dim);}
+  .empty-state .big{font-size:30px;margin-bottom:8px;}
+  .empty-state .t{font-weight:700;color:var(--text);margin-bottom:4px;font-family:'Cairo',sans-serif;}
+  .empty-state .d{font-size:13px;margin-bottom:14px;}
+
+  .inline-form{background:var(--surface-2);border:1px dashed var(--border);border-radius:10px;padding:12px;margin-top:8px;display:flex;gap:10px;align-items:end;flex-wrap:wrap;}
+
+  .filters{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px;}
+  .filters select{width:auto;min-width:150px;}
+  .month-filter-select{width:auto;min-width:170px;}
+  @keyframes announceIn{from{opacity:0;transform:translateY(-12px);}to{opacity:1;transform:translateY(0);}}
+  @keyframes announceShineOnce{0%{transform:translateX(-120%) skewX(-15deg);}100%{transform:translateX(220%) skewX(-15deg);}}
+  @keyframes announceBadgeIn{0%{transform:scale(.5);opacity:0;}60%{transform:scale(1.08);opacity:1;}100%{transform:scale(1);opacity:1;}}
+  .announcement-banner{
+    position:relative;overflow:hidden;border-radius:14px;margin-bottom:22px;
+    background:linear-gradient(135deg, #141b32, #1b2340);
+    border:1px solid rgba(255,255,255,.08);
+    border-left:4px solid var(--teal);
+    box-shadow:0 10px 28px rgba(0,0,0,.35);
+    animation:announceIn .5s cubic-bezier(.16,1,.3,1);
+  }
+  .announcement-banner::after{
+    content:'';position:absolute;top:0;left:0;width:35%;height:100%;
+    background:linear-gradient(100deg, transparent, rgba(255,255,255,.06), transparent);
+    animation:announceShineOnce 1.6s ease-out .3s 1;pointer-events:none;
+  }
+  .announcement-banner .inner{position:relative;z-index:1;padding:20px 24px;}
+  .announcement-banner .badge-ic{
+    flex:0 0 auto;width:38px;height:38px;border-radius:11px;
+    background:linear-gradient(135deg, var(--teal), var(--indigo));
+    display:flex;align-items:center;justify-content:center;font-size:17px;
+    animation:announceBadgeIn .5s cubic-bezier(.34,1.56,.64,1) .15s backwards;
+    box-shadow:0 4px 14px rgba(64,189,169,.35);
+  }
+
+  .grid-2{display:grid;grid-template-columns:1.3fr 1fr;gap:20px;}
+  .grid-3{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:18px;}
+  @media(max-width:980px){.grid-2{grid-template-columns:1fr;} .grid-3{grid-template-columns:1fr;}}
+
+  .profile-head{display:flex;align-items:center;gap:16px;margin-bottom:18px;flex-wrap:wrap;}
+  .profile-head .avatar{width:64px;height:64px;border-radius:16px;font-size:22px;flex:0 0 64px;}
+  .profile-head h2{margin:0 0 3px;font-size:20px;}
+  .profile-head .role{color:var(--text-dim);font-size:13px;}
+  .photo-btn{margin-top:6px;}
+  .back-link{display:inline-flex;align-items:center;gap:6px;color:var(--text-dim);font-size:13px;cursor:pointer;margin-bottom:14px;}
+  .back-link:hover{color:var(--text);}
+
+  .stat-mini{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px;margin-bottom:18px;}
+  .stat-mini .box{background:var(--surface-2);border:1px solid var(--border);border-radius:10px;padding:12px 13px;}
+  .stat-mini .box .l{font-size:11px;color:var(--text-faint);margin-bottom:4px;}
+  .stat-mini .box .v{font-family:'Cairo',sans-serif;font-weight:800;font-size:18px;}
+
+  .weight-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;}
+  .weight-grid .wlabel{font-size:11.5px;color:var(--text-dim);margin-bottom:5px;}
+  .weight-grid .wsub{font-size:10.5px;color:var(--text-faint);}
+
+  @media(max-width:820px){
+    .shell{flex-direction:column;}
+    .sidebar{width:100%;flex:none;height:auto;max-height:none;position:relative;flex-direction:row;align-items:center;overflow-x:auto;overflow-y:visible;padding:12px 14px;border-right:none;border-bottom:1px solid var(--border);gap:14px;}
+    .brand{flex-direction:row;align-items:center;gap:10px;flex:0 0 auto;}
+    .brand-logo{max-width:120px;}
+    .brand .sub{display:none;}
+    .brand-title{display:none;}
+    nav.nav{flex-direction:row;gap:6px;flex:0 0 auto;}
+    .nav button{padding:9px 12px;font-size:13px;white-space:nowrap;}
+    .sidebar-foot{display:none;}
+    #btn-logout{flex:0 0 auto;margin-top:0 !important;white-space:nowrap;}
+    main{padding:18px 14px 60px;}
+    .page-head{align-items:flex-start;}
+    .page-head h1{font-size:20px;}
+    .kpi-row{grid-template-columns:repeat(2,1fr);gap:10px;}
+    .kpi{padding:13px 14px;}
+    .kpi .val{font-size:21px;}
+    .grid-2{gap:14px;}
+    .card{padding:16px;overflow-x:auto;}
+    table{font-size:12.5px;}
+    th,td{padding:9px 8px;}
+    .form-grid{grid-template-columns:1fr;}
+    .weight-grid{grid-template-columns:1fr 1fr;}
+    .stat-mini{grid-template-columns:repeat(2,1fr);}
+    input[type=text],input[type=number],input[type=date],input[type=password],select,textarea,.btn{min-height:40px;}
+    .btn{padding:10px 16px;}
+    .btn-sm{min-height:34px;padding:7px 12px;}
+    .profile-head{align-items:flex-start;}
+    .inline-form{padding:14px;}
+  }
+  @media(max-width:480px){
+    .kpi-row{grid-template-columns:1fr 1fr;}
+    .stat-mini{grid-template-columns:1fr 1fr;}
+    .weight-grid{grid-template-columns:1fr;}
+    main{padding:14px 10px 60px;}
+    .card{padding:14px;}
+  }
+  .toast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%);background:var(--surface-3);border:1px solid var(--border);padding:11px 20px;border-radius:10px;font-size:13.5px;box-shadow:0 10px 30px rgba(0,0,0,.4);z-index:50;opacity:0;pointer-events:none;transition:.25s;max-width:92vw;text-align:center;}
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(-6px);}
+</style>
+</head>
+<body>
+<div id="root"></div>
+<div class="toast" id="toast"></div>
+
+<script>
+/* ============ storage & state ============ */
+const LOGO_DATA_URI = 'data:image/png;base64,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';
+/* ====== SUPABASE SETUP — fill these in before hosting ======
+   1. Create a free project at https://supabase.com
+   2. Create the 17 per-record tables (employees, tasks, quality_reviews, compliance_audits, checkins,
+      commitments, deliveries, one_on_ones, audit_log, requests, monitoring_logs, client_satisfaction,
+      employee_of_month, shoutouts, attendance_logs, voice_messages, app_settings), each shaped as
+      `id text primary key, data jsonb not null, updated_at timestamptz`.
+   3. Go to Project Settings → API and copy your Project URL and anon public key below.
+   The legacy single-row `app_state` table is kept only as a backup and is no longer read or written. */
+const SUPABASE_URL = 'https://ueeneokoxohlxjrfrmut.supabase.co';
+const SUPABASE_ANON_KEY = 'sb_publishable_F0EHFYvEYHuNAbgpAnEfrQ_XFqpZgUQ';
+let sbClient = null;
+let supabaseInitError = '';
+try{
+  if(SUPABASE_URL.startsWith('http')){
+    if(!window.supabase) throw new Error('The Supabase library script did not load (check your internet connection or try hosting the file instead of opening it directly).');
+    sbClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  }
+}catch(e){ supabaseInitError = e.message || String(e); }
+// Maps each in-memory state array to its own dedicated Supabase table (one row per record, id + data jsonb).
+const TABLE_MAP = {
+  employees:'employees', tasks:'tasks', qualityReviews:'quality_reviews', complianceAudits:'compliance_audits',
+  checkins:'checkins', commitments:'commitments', deliveries:'deliveries', oneOnOnes:'one_on_ones',
+  auditLog:'audit_log', requests:'requests', monitoringLogs:'monitoring_logs', clientSatisfaction:'client_satisfaction',
+  employeeOfMonth:'employee_of_month', shoutouts:'shoutouts', attendanceLogs:'attendance_logs', voiceMessages:'voice_messages',
+  pipeline:'pipeline',
+};
+const AVATAR_COLORS = ['#4D88E8','#40BDA9','#FFBC3A','#F26A44','#7C9CFF','#3FD0C9','#F0C05A','#FF8FA3','#8D7BFF'];
+
+const TIER_RANK = {associate:1, specialist:2, senior:3};
+function tierRank(role){ const t=detectTier(role); return t? TIER_RANK[t] : null; }
+
+const DEFAULT_TASK_TYPES = [
+  {id:'tt1', name:'Training Outline', lead:'Senior LXD leads. Specialist may support.', typicalTierRank:3, notes:'New outline development',
+    modes:[{key:'fromScratch', label:'From Scratch', range:'3 Days', days:3},{key:'edition', label:'Edition', range:'1 Day', days:1}]},
+  {id:'tt2', name:'Training PPT', lead:'Associate / Specialist / Senior — Team Leader decides based on level and complexity.', typicalTierRank:null, notes:'Depending on designer level and project complexity',
+    modes:[{key:'edition', label:'Edition', range:'3–5 Days', days:4},{key:'fromScratch', label:'From Scratch', range:'5–10 Days', days:8}]},
+  {id:'tt3', name:'Facilitator Guide (written)', lead:'Associate / Specialist / Senior — Specialist/Senior lead more complex cases.', typicalTierRank:null, notes:'Included within material development effort — standalone estimate below',
+    modes:[{key:'productized', label:'Productized', range:'Included, or 0.5 day standalone', days:1},{key:'customized', label:'Customized', range:'Included, or 0.5 day standalone', days:1},{key:'fromScratch', label:'From Scratch', range:'Included, or 0.5 day standalone', days:1}]},
+  {id:'tt4', name:'Activities & Simulations', lead:'Associate / Specialist / Senior — Specialist/Senior lead more complex cases.', typicalTierRank:null, notes:'Included within material development effort — standalone estimate below',
+    modes:[{key:'productized', label:'Productized', range:'Included, or 1–2 days standalone', days:2},{key:'customized', label:'Customized', range:'Included, or 1–2 days standalone', days:2},{key:'fromScratch', label:'From Scratch', range:'Included, or 1–2 days standalone', days:2}]},
+  {id:'tt5', name:'Assessments', lead:'Associate / Specialist / Senior — Specialist/Senior lead more complex cases.', typicalTierRank:null, notes:'Included within material development effort — standalone estimate below',
+    modes:[{key:'productized', label:'Productized', range:'Included, or 0.5 day standalone', days:1},{key:'customized', label:'Customized', range:'Included, or 0.5 day standalone', days:1},{key:'fromScratch', label:'From Scratch', range:'Included, or 0.5 day standalone', days:1}]},
+  {id:'tt6', name:'Board Game Design', lead:'Specialist / Senior LXD.', typicalTierRank:2, notes:'Depends on mechanics and prototype iterations',
+    modes:[{key:'customized', label:'Customized', range:'5–7 Days', days:6},{key:'fromScratch', label:'From Scratch', range:'10–15 Days', days:13}]},
+  {id:'tt7', name:'Leadership / Executive Program', lead:'Senior LXD.', typicalTierRank:3, notes:'Content development only',
+    modes:[{key:'fromScratch', label:'From Scratch', range:'5–10 Days', days:8}]},
+  {id:'tt8', name:'Signature Topic / CPD Certification', lead:'Senior LXD, under Quality Lead sponsorship — Specialist as co-designer.', typicalTierRank:3, notes:'Excludes SME review cycles',
+    modes:[{key:'customized', label:'Customized', range:'5–7 Days', days:6},{key:'fromScratch', label:'From Scratch', range:'5–10 Days', days:8}]},
+  {id:'tt9', name:'New Methodology / Tool Pilot', lead:'Open to any tier — coordinated with the Learning Innovation Lead.', typicalTierRank:null, notes:'Variable — estimated individually',
+    modes:[{key:'variable', label:'Variable', range:'Estimated individually', days:5}]},
+  {id:'tt10', name:'Other', lead:'', typicalTierRank:null, notes:'For new/unclassified task types — set your own dates',
+    modes:[{key:'unspecified', label:'Not standardized yet', range:'You choose the dates', days:null}]},
+  {id:'tt11', name:'Competency Mapping', lead:'Specialist or Senior LXD.', typicalTierRank:2, notes:'Standard competency mapping only',
+    modes:[{key:'productized', label:'Productized', range:'2 Days', days:2}]},
+  {id:'tt12', name:'Client Briefing / Meeting', lead:'Senior LXD leads. Specialist may support — does not lead.', typicalTierRank:3, notes:'',
+    modes:[{key:'standard', label:'Standard', range:'1 Day', days:1}]},
+  {id:'tt13', name:'Walk Through with Trainer', lead:'Open to any tier.', typicalTierRank:null, notes:'',
+    modes:[{key:'standard', label:'Standard', range:'2 Hours', days:0.25}]},
+  {id:'tt14', name:'Topic Matching', lead:'Open to any tier.', typicalTierRank:null, notes:'',
+    modes:[{key:'outline', label:'Outline', range:'3 Hours', days:0.375},{key:'material', label:'Material', range:'8 Hours (1 Working Day)', days:1}]},
+  {id:'tt15', name:'Outline Journey', lead:'Open to any tier.', typicalTierRank:null, notes:'',
+    modes:[{key:'fromScratch', label:'From Scratch', range:'3 Days', days:3},{key:'edition', label:'Edition', range:'1 Day', days:1}]},
+  {id:'tt16', name:'Handout', lead:'Open to any tier.', typicalTierRank:null, notes:'',
+    modes:[{key:'standard', label:'Standard', range:'4 Hours', days:0.5}]},
+  {id:'tt17', name:'Trainer PPT Note', lead:'Open to any tier.', typicalTierRank:null, notes:'',
+    modes:[{key:'standard', label:'Standard', range:'2 Hours', days:0.25}]},
+];
+const BD_OPTIONS = ['Corporate Egypt','Corporate Gulf','CDP','Public'];
+const LANGUAGE_OPTIONS = ['English','Arabic'];
+const TOPIC_TYPE_OPTIONS = ['Signature','Customized'];
+const PAUSE_REASONS = [
+  {value:'higher_priority', label:'Higher-priority task came in'},
+  {value:'waiting_client', label:'Waiting BD update'},
+  {value:'leave', label:'Leave or absence'},
+  {value:'scope_change', label:'Scope change / brief update'},
+  {value:'technical_issue', label:'Technical issue'},
+  {value:'other', label:'Other'},
+];
+function taskTypeMode(type, modeKey){
+  return type.modes.find(m=>m.key===modeKey) || type.modes[0];
+}
+
+const D1_WEIGHTS = {transfer:.30, relevance:.15, application:.08, craft:.18, objective:.12, consistency:.10, presentation:.07};
+const MONITORING_FORM_URL = 'https://docs.google.com/forms/d/e/1FAIpQLSf3vaVTWWL5bc18_UXj_tlDDyknN3S7AUZov1slONrr4BryLA/viewform?usp=sharing';
+const MONITORING_RESPONSES_URL = 'https://docs.google.com/forms/d/1cjq9WrTmPcazroK4w1_9Dga35du8bo2orriBATyYqdg/edit#responses';
+const D1_CRITERIA = [
+  {key:'transfer', label:'Transfer Design', weight:30},
+  {key:'relevance', label:'Learner Relevance', weight:15},
+  {key:'application', label:'Application Orientation', weight:8},
+  {key:'craft', label:'Craft', weight:18},
+  {key:'objective', label:'Objective Integrity', weight:12},
+  {key:'consistency', label:'Consistency', weight:10},
+  {key:'presentation', label:'Presentation Standards', weight:7},
+];
+const D3_CHECKLIST = [
+  {key:'handoff', label:'Handoff Quality', items:[
+    {code:'H1', label:'Training pack shared with trainer at least 7 working days before delivery, complete & final', tier:1},
+    {code:'H2', label:'Logistics folder ready on shared server at least 7 working days before delivery', tier:1},
+    {code:'H3', label:'Deliverable internally reviewed before reaching client', tier:1},
+    {code:'H4', label:'Outline or proposal reaches client within agreed timeframe', tier:1},
+    {code:'H5', label:'Correct version of deliverable shared at handoff', tier:1},
+    {code:'H6', label:'Handoff accompanied by enough context to act without follow-up', tier:2},
+  ]},
+  {key:'assets', label:'Asset & Version Control', items:[
+    {code:'A1', label:'File naming convention followed correctly', tier:2},
+    {code:'A2', label:'File saved in correct server location', tier:2},
+    {code:'A3', label:'Version control applied correctly', tier:2},
+    {code:'A4', label:'Superseded versions archived correctly', tier:2},
+    {code:'A5', label:'Server folders updated after every training delivery', tier:1},
+    {code:'A6', label:'No duplicate files in active folders', tier:2},
+    {code:'A7', label:'Shared server accessible & organized for stakeholders', tier:2},
+  ]},
+  {key:'comms', label:'Communication & Responsiveness', items:[
+    {code:'C1', label:'Slack messages responded to within 8 business hours', tier:2},
+    {code:'C2', label:'Intake requests acknowledged & logged in ClickUp within 8 business hours', tier:1},
+    {code:'C3', label:'Stakeholders updated on project status proactively', tier:2},
+    {code:'C4', label:'Client expectations set and documented at intake', tier:1},
+    {code:'C5', label:'Implementation date feasibility confirmed by LD before external commitment', tier:1},
+    {code:'C6', label:'Client-facing communications reviewed before sending', tier:1},
+    {code:'C7', label:'Escalations communicated upward within 8 business hours', tier:2},
+  ]},
+  {key:'process', label:'Process Compliance', items:[
+    {code:'P1', label:'Design brief completed and signed off before work begins', tier:1},
+    {code:'P2', label:'Outline reviewed internally before client submission', tier:1},
+    {code:'P3', label:'Design work follows agreed project timeline', tier:2},
+    {code:'P4', label:'Revision rounds managed within agreed parameters', tier:2},
+    {code:'P5', label:'Quality review completed and documented for every deliverable', tier:1},
+    {code:'P6', label:'ClickUp task updated at every project stage', tier:2},
+    {code:'P7', label:'New requests enter system through the correct intake channel', tier:1},
+    {code:'P8', label:'Trainer briefing completed before every delivery', tier:1},
+    {code:'P9', label:'Post-delivery review completed and logged within agreed timeframe', tier:2},
+    {code:'P10', label:'CPD and certification documentation maintained and current', tier:2},
+  ]},
+];
+function computeAuditScores(checkpoints){
+  let passed=0, total=0;
+  const catScores = {};
+  D3_CHECKLIST.forEach(cat=>{
+    let p=0,t=0;
+    cat.items.forEach(it=>{
+      const v = checkpoints[it.code];
+      if(v==='pass'){p++;t++;passed++;total++;}
+      else if(v==='fail'){t++;total++;}
+    });
+    catScores[cat.key] = t? Math.round((p/t)*100) : null;
+  });
+  const overallPct = total? Math.round((passed/total)*100) : 0;
+  return {catScores, overallPct};
+}
+function tier1Failures(checkpoints){
+  const fails=[];
+  D3_CHECKLIST.forEach(cat=>cat.items.forEach(it=>{ if(it.tier===1 && checkpoints[it.code]==='fail') fails.push(it.code); }));
+  return fails;
+}
+function monthsBetween(a,b){
+  const d1=new Date(a+'T00:00:00'), d2=new Date(b+'T00:00:00');
+  return Math.max(0,(d2.getFullYear()-d1.getFullYear())*12 + (d2.getMonth()-d1.getMonth()));
+}
+function computeTriggers(){
+  const triggers = [];
+  state.qualityReviews.forEach(r=>{
+    if(r.scores && r.scores.transfer===1){
+      triggers.push({code:'Q1', severity:'IMMEDIATE', text:`Transfer Design hard stop — ${employeeById(r.employeeId)?.name||'—'} — "${r.program}" (${fmtDate(r.date)})`});
+    }
+  });
+  state.employees.forEach(e=>{
+    const revs = state.qualityReviews.filter(r=>r.employeeId===e.id).sort((a,b)=>new Date(a.date)-new Date(b.date));
+    for(let i=0;i+2<revs.length;i++){
+      const win = revs.slice(i,i+3);
+      const avg = win.reduce((s,r)=>s+r.pct,0)/3;
+      if(avg<80){
+        triggers.push({code:'Q2', severity:'URGENT', text:`${e.name} — average quality score below 80% across 3 consecutive reviews (${avg.toFixed(0)}%)`});
+        break;
+      }
+    }
+  });
+  const latestAudit = state.complianceAudits.slice().sort((a,b)=> new Date(b.year,b.month)-new Date(a.year,a.month))[0];
+  if(latestAudit){
+    if(latestAudit.tier1Fails && latestAudit.tier1Fails.length){
+      triggers.push({code:'O1', severity:'IMMEDIATE', text:`Tier 1 checkpoint failure this month: ${latestAudit.tier1Fails.join(', ')}`});
+    }
+    if(typeof latestAudit.overallPct==='number' && latestAudit.overallPct<90){
+      triggers.push({code:'O2', severity:'URGENT', text:`Monthly compliance score is ${latestAudit.overallPct}% — below the 90% standard`});
+    }
+  }
+  state.employees.forEach(e=>{
+    if(e.tierStartDate){
+      const months = monthsBetween(e.tierStartDate, todayStr());
+      if(months>=12){
+        triggers.push({code:'P4', severity:'SCHEDULED', text:`${e.name} has been in their current tier for ${months} months — eligible for an advancement review`});
+      }
+    }
+  });
+  state.oneOnOnes.forEach(o=>{
+    (o.actions||[]).forEach(a=>{
+      if(a.dueDate && !a.done && a.dueDate < todayStr()){
+        triggers.push({code:'P3', severity:'URGENT', text:`${employeeById(o.employeeId)?.name||'—'} — action item overdue: "${a.text}" (was due ${fmtDate(a.dueDate)})`});
+      }
+    });
+  });
+  state.tasks.forEach(t=>{
+    if(t.paused && t.slackDeliveryTime && t.pausedAt && t.plannedResumeAt){
+      const slackDate = t.slackDeliveryTime.slice(0,10);
+      if(slackDate>=t.pausedAt && slackDate<=t.plannedResumeAt){
+        triggers.push({code:'T1', severity:'IMMEDIATE', text:`"${t.title}" (${employeeById(t.assigneeId)?.name||'—'}) is paused ${fmtDate(t.pausedAt)}–${fmtDate(t.plannedResumeAt)}, but its Slack delivery time (${fmtDate(slackDate)}) falls inside that pause window`});
+      }
+    }
+  });
+  return triggers;
+}
+function getWeekStart(d){
+  const [y,m,dd] = d.split('-').map(Number);
+  const dt = new Date(Date.UTC(y, m-1, dd));
+  const day = dt.getUTCDay(); // 0=Sunday
+  dt.setUTCDate(dt.getUTCDate()-day);
+  return dt.toISOString().slice(0,10);
+}
+let session = null;
+let loginState = { error:'' };
+let state = {
+  employees: [
+    {id:'e_rahma', name:'Rahma Kassab', role:'LXD Associate', photo:null, tierStartDate:null, username:'rahma', password:'welcome123', hireDate:null, wfhDays:[], annualLeaveBalance:21},
+    {id:'e_esraa', name:'Esraa Ibrahim', role:'LXD Specialist', photo:null, tierStartDate:null, username:'esraa', password:'welcome123', hireDate:null, wfhDays:[], annualLeaveBalance:21},
+    {id:'e_ismael2', name:'Ismael Elmemtny', role:'LXD Specialist', photo:null, tierStartDate:null, username:'ismael', password:'welcome123', hireDate:null, wfhDays:[], annualLeaveBalance:21},
+    {id:'e_nour2', name:'Nour Fadda', role:'LXD Specialist', photo:null, tierStartDate:null, username:'nour', password:'welcome123', hireDate:null, wfhDays:[], annualLeaveBalance:21},
+    {id:'e_hussien', name:'Hussien Sobhy', role:'Sr LXD', photo:null, tierStartDate:null, username:'hussien', password:'welcome123', hireDate:null, wfhDays:[], annualLeaveBalance:21},
+  ],
+  taskTypes: DEFAULT_TASK_TYPES,
+  tasks: [],
+  qualityReviews: [],
+  complianceAudits: [],
+  checkins: [],
+  commitments: [],
+  deliveries: [],
+  oneOnOnes: [],
+  auditLog: [],
+  requests: [],
+  monitoringLogs: [],
+  clientSatisfaction: [],
+  employeeOfMonth: [],
+  shoutouts: [],
+  attendanceLogs: [],
+  voiceMessages: [],
+  pipeline: [], // {id, eventId, title, client, eventDate, matchedTopic, assignedTo, status, seenByAssignee, createdAt} — client training requests from Google Calendar
+  accounts: {
+    admin: {username:'admin', password:'admin123', displayName:'Admin'},
+    teamlead: {username:'teamlead', password:'lead123', displayName:'Team Lead'},
+    ldmanager: {username:'Hadeel', password:'Hadeel@2026.SkillsBank.com', displayName:'LD Manager'},
+  },
+  authMigrated: false,
+  announcement: null, // {text, authorLabel, createdAt} — one active team-wide announcement, stored alongside accounts
+  trainingTopics: [ // Training Owner map — which team member currently owns which training topic
+    {id:'tp1', topic:'Alpha Leader', employeeId:'e_mtcxh9w9jbytf'},
+    {id:'tp2', topic:'Feedback to Feedforward', employeeId:'e_mtcxh9w9jbytf'},
+    {id:'tp3', topic:'Accountability', employeeId:'e_mtcxh9w9jbytf'},
+    {id:'tp4', topic:'Operational Excellence', employeeId:'e_mtcxh9w9jbytf'},
+    {id:'tp5', topic:'Coping with Stress', employeeId:'e_mtcxh9w9jbytf'},
+    {id:'tp6', topic:'Business Etiquette', employeeId:'e_esraa'},
+    {id:'tp7', topic:'Win the Deal', employeeId:'e_esraa'},
+    {id:'tp8', topic:'Cross Selling', employeeId:'e_esraa'},
+    {id:'tp9', topic:'B2B Sales – Samsonite', employeeId:'e_esraa'},
+    {id:'tp10', topic:'AI Copilot', employeeId:'e_esraa'},
+    {id:'tp11', topic:'Managerial Momentum', employeeId:'e_hussien'},
+    {id:'tp12', topic:'Leading Beyond', employeeId:'e_hussien'},
+    {id:'tp13', topic:'Customer Centricity', employeeId:'e_hussien'},
+    {id:'tp14', topic:'Analytical Thinking', employeeId:'e_hussien'},
+    {id:'tp15', topic:'Agile Proficiency', employeeId:'e_hussien'},
+    {id:'tp16', topic:'Step Forward – Moving Ahead with Self Confidence', employeeId:'e_ismael2'},
+    {id:'tp17', topic:'Think Differently to Create Impact', employeeId:'e_ismael2'},
+    {id:'tp18', topic:'Emotional Intelligence', employeeId:'e_ismael2'},
+    {id:'tp19', topic:'Wellbeing', employeeId:'e_ismael2'},
+    {id:'tp20', topic:'Mission Clarity', employeeId:'e_ismael2'},
+    {id:'tp21', topic:'Company influencer', employeeId:'e_ismael2'},
+    {id:'tp22', topic:'Company influencer', employeeId:'e_ismael2'},
+    {id:'tp23', topic:'Change Management', employeeId:'e_mtcxjbijfu16p'},
+    {id:'tp24', topic:'The Strategist – Strategic Thinking & Planning', employeeId:'e_mtcxjbijfu16p'},
+    {id:'tp25', topic:'Dealing with Change', employeeId:'e_mtcxjbijfu16p'},
+    {id:'tp26', topic:'Strategy of Decision Making Muscles', employeeId:'e_mtcxjbijfu16p'},
+    {id:'tp27', topic:'Getting To A Yes', employeeId:'e_mtcxjbijfu16p'},
+    {id:'tp28', topic:'From Tension to Triumph – Crucial Conversations', employeeId:'e_nour2'},
+    {id:'tp29', topic:'Build Your Decision-Making Muscles', employeeId:'e_nour2'},
+    {id:'tp30', topic:'Building Bridges', employeeId:'e_nour2'},
+    {id:'tp31', topic:'Design Thinking', employeeId:'e_nour2'},
+    {id:'tp32', topic:'Team Synergy - For Leaders', employeeId:'e_nour2'},
+    {id:'tp33', topic:'Beyond Checklist – One Day', employeeId:'e_rahma'},
+    {id:'tp34', topic:'Clockwise', employeeId:'e_rahma'},
+    {id:'tp35', topic:'Customer Service Mastery', employeeId:'e_rahma'},
+    {id:'tp36', topic:'The Solutionist', employeeId:'e_rahma'},
+    {id:'tp37', topic:'Team Synergy', employeeId:'e_rahma'},
+    {id:'tp38', topic:'Influence to Impact', employeeId:'e_hussien'},
+    {id:'tp39', topic:'Lead to Win', employeeId:'e_hussien'},
+    {id:'tp40', topic:'AI Co-pilot At Work', employeeId:'e_esraa'},
+  ],
+};
+let ui = { page:'dashboard', selectedEmployee:null, showAddEmployee:false, showAddTask:false, completingTask:null, pausingTask:null,
+  showAddReview:false, showAddAudit:false, showAddCheckin:false, showAddCommitment:false, showAddDelivery:false, showAddOneOnOne:false, showPickTask:false, showAddRequest:false, approvingTask:null, editingTask:null,
+  showAddMonitoring:false, showAddSatisfaction:false, showEomPicker:false, showAddShoutout:false, showVoiceForm:false,
+  editingReview:null, editingAudit:null, editingDelivery:null, editingMonitoring:null, editingSatisfaction:null,
+  showAddAttendance:false, editingAttendance:null,
+  reportFilterEmp:'all', reportFilterType:'all', reportFilterStatus:'all',
+  monthFilters:{}, showAnnouncementForm:false, expandedReviews:{}, showAddMyMonitoring:false, addingTopicFor:null, trainingOwnerFilterEmp:null, quarterDrilldown:null, showPipelineImport:false, pipelineImportPreview:null };
+
+function uid(p){ return p+'_'+Date.now().toString(36)+Math.random().toString(36).slice(2,7); }
+function actorLabel(){
+  if(!session) return 'System';
+  if(session.role==='admin') return 'Admin';
+  if(session.role==='teamlead') return 'Team Lead';
+  if(session.role==='ldmanager') return 'LD Manager';
+  return employeeById(session.employeeId)?.name || 'Employee';
+}
+function logActivity(text){
+  state.auditLog.push({id:uid('log'), ts:new Date().toISOString(), actor:actorLabel(), text});
+  if(state.auditLog.length>500) state.auditLog = state.auditLog.slice(-500);
+}
+function fmtDateTime(iso){
+  const d = new Date(iso);
+  return d.toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'})+' · '+d.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});
+}
+function todayStr(){ const d=new Date(); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
+function addDays(dateStr, n){ const [y,m,d]=dateStr.split('-').map(Number); const dt=new Date(Date.UTC(y,m-1,d)); dt.setUTCDate(dt.getUTCDate()+n); return dt.toISOString().slice(0,10); }
+function dayDiff(a,b){ return Math.round((new Date(a+'T00:00:00') - new Date(b+'T00:00:00'))/86400000); }
+// Work week is Sunday–Thursday; Friday and Saturday are the weekend and never count toward durations, deadlines, or leave balances.
+function isWeekendDay(dateStr){
+  const [y,m,d] = dateStr.split('-').map(Number);
+  const day = new Date(Date.UTC(y,m-1,d)).getUTCDay(); // 0=Sun ... 5=Fri, 6=Sat
+  return day===5 || day===6;
+}
+function addBusinessDays(dateStr, n){
+  if(!dateStr || !isFinite(n)) return dateStr;
+  let d = dateStr;
+  let remaining = Math.min(Math.abs(n), 3650);
+  const step = n>=0 ? 1 : -1;
+  let guard = 0;
+  while(remaining>0 && guard<20000){
+    d = addDays(d, step);
+    if(!isWeekendDay(d)) remaining--;
+    guard++;
+  }
+  return d;
+}
+function businessDayDiff(a, b){
+  if(!a || !b) return 0;
+  if(a===b) return 0;
+  const sign = a>b ? 1 : -1;
+  const lo = sign===1? b : a;
+  const hi = sign===1? a : b;
+  let count = 0, cur = lo, guard = 0;
+  while(cur < hi && guard<20000){
+    cur = addDays(cur, 1);
+    if(!isWeekendDay(cur)) count++;
+    guard++;
+  }
+  return count*sign;
+}
+function businessDaysInclusive(aStr, bStr){
+  if(!aStr || !bStr) return 0;
+  const lo = aStr<=bStr? aStr : bStr;
+  const hi = aStr<=bStr? bStr : aStr;
+  let count = 0, cur = lo, guard = 0;
+  while(cur<=hi && guard<20000){
+    if(!isWeekendDay(cur)) count++;
+    cur = addDays(cur,1);
+    guard++;
+  }
+  return count;
+}
+function fmtDate(d){ if(!d) return '—'; const dt=new Date(d+'T00:00:00'); return dt.toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'}); }
+
+// ====== Per-record persistence layer ======
+// Each table holds independent rows (id + data jsonb + updated_at). We never read-all/merge-guess/write-all-over
+// anymore — every save diffs the in-memory state against a snapshot of what we last knew was on the server and
+// issues one atomic insert/update/delete per row that actually changed. Each snapshot entry also remembers the
+// row's server `updated_at`, so if two people edit the *same* record at the same moment, the second save can
+// detect that the row moved under it (optimistic locking) instead of silently overwriting the first person's work.
+let lastSyncedSnapshot = null; // { [stateKey]: Map(id -> {json, updatedAt}) , __settings: {json, updatedAt} }
+function snapshotState(rowUpdatedAt){
+  // rowUpdatedAt (optional): { [stateKey]: Map(id->updated_at), __settings: updated_at } — real server timestamps,
+  // passed in right after a load. When omitted (e.g. right after our own save), updatedAt is left null for
+  // anything we don't already know a fresh timestamp for.
+  const snap = {};
+  Object.keys(TABLE_MAP).forEach(key=>{
+    const m = new Map();
+    const tsMap = rowUpdatedAt && rowUpdatedAt[key];
+    (Array.isArray(state[key])?state[key]:[]).forEach(r=>{
+      if(r && r.id) m.set(r.id, {json: JSON.stringify(r), updatedAt: tsMap ? (tsMap.get(r.id)||null) : null});
+    });
+    snap[key] = m;
+  });
+  snap.__settings = {json: JSON.stringify({accounts:state.accounts, authMigrated:state.authMigrated, announcement:state.announcement, trainingTopics:state.trainingTopics}), updatedAt: (rowUpdatedAt && rowUpdatedAt.__settings) || null};
+  return snap;
+}
+// Writes one row. If expectedUpdatedAt is given, first checks the row hasn't been touched by someone else
+// since we last saw it — if it has, returns {conflict:true} instead of overwriting.
+async function dbUpsertRow(table, id, data, expectedUpdatedAt){
+  if(expectedUpdatedAt){
+    const { data: cur, error: checkErr } = await sbClient.from(table).select('updated_at').eq('id', id).maybeSingle();
+    if(!checkErr && cur && cur.updated_at && cur.updated_at !== expectedUpdatedAt){
+      return {ok:false, conflict:true};
+    }
+  }
+  const { data: written, error } = await sbClient.from(table).upsert({id, data, updated_at:new Date().toISOString()}).select('updated_at').single();
+  if(error){ console.error(`Supabase upsert error [${table}/${id}]:`, JSON.stringify(error, null, 2), error.message, error.details, error.hint, error.code); showToast('Could not save — check your Supabase connection'); return {ok:false, conflict:false}; }
+  return {ok:true, conflict:false, updatedAt: written ? written.updated_at : null};
+}
+async function dbDeleteRow(table, id){
+  const { error } = await sbClient.from(table).delete().eq('id', id);
+  if(error){ console.error(`Supabase delete error [${table}/${id}]:`, JSON.stringify(error, null, 2), error.message, error.details, error.hint, error.code); showToast('Could not delete — check your Supabase connection'); return {ok:false, conflict:false}; }
+  return {ok:true, conflict:false};
+}
+async function loadAccountSettings(){
+  // Fast, single-query fetch of just the account credentials + migration flag, run before the
+  // login screen is shown — checkLogin() needs real values here, not the hardcoded JS defaults.
+  try{
+    const { data, error } = await sbClient.from('app_settings').select('data').eq('id','main').single();
+    if(error && error.code!=='PGRST116') { console.error('loadAccountSettings failed:', JSON.stringify(error)); return; }
+    if(data && data.data){
+      state.accounts = data.data.accounts || state.accounts;
+      state.authMigrated = !!data.data.authMigrated;
+    }
+  }catch(e){ console.error('loadAccountSettings failed:', e); }
+}
+async function loadData(){
+  try{
+    const tableKeys = Object.keys(TABLE_MAP);
+    const results = await Promise.all(tableKeys.map(k=>sbClient.from(TABLE_MAP[k]).select('id,data,updated_at')));
+    const unseeded = new Set(); // tables that came back empty — keep in-code defaults and seed them on next save
+    const rowUpdatedAt = {};
+    results.forEach((res,i)=>{
+      const key = tableKeys[i];
+      const table = TABLE_MAP[key];
+      if(res.error){ console.error(`Supabase load error [${table}]:`, JSON.stringify(res.error, null, 2), res.error.message, res.error.details, res.error.hint, res.error.code); return; }
+      const rows = res.data || [];
+      if(rows.length===0){ unseeded.add(key); return; }
+      state[key] = rows.map(row => (row.data && typeof row.data==='object') ? {...row.data, id: row.data.id || row.id} : null).filter(Boolean);
+      rowUpdatedAt[key] = new Map(rows.map(row=>[ (row.data && row.data.id) || row.id, row.updated_at ]));
+    });
+    const { data: settingsRow, error: settingsErr } = await sbClient.from('app_settings').select('data,updated_at').eq('id','main').single();
+    let settingsUnseeded = false;
+    if(settingsErr && settingsErr.code!=='PGRST116') console.error('Supabase load error [app_settings]:', JSON.stringify(settingsErr, null, 2), settingsErr.message, settingsErr.details, settingsErr.hint, settingsErr.code);
+    if(settingsRow && settingsRow.data){
+      state.accounts = settingsRow.data.accounts || state.accounts;
+      state.authMigrated = !!settingsRow.data.authMigrated;
+      state.announcement = settingsRow.data.announcement || null;
+      state.trainingTopics = settingsRow.data.trainingTopics || state.trainingTopics;
+      rowUpdatedAt.__settings = settingsRow.updated_at;
+    } else { settingsUnseeded = true; }
+    state.employees.forEach(e=>{
+      if(e.hireDate===undefined) e.hireDate=null;
+      if(e.wfhDays===undefined) e.wfhDays=[];
+      if(e.annualLeaveBalance===undefined) e.annualLeaveBalance=21;
+      if(e.username===undefined) e.username=null;
+      if(e.password===undefined) e.password=null;
+    });
+    // taskTypes always come from the current code catalog
+    lastSyncedSnapshot = snapshotState(rowUpdatedAt);
+    unseeded.forEach(key=>{ lastSyncedSnapshot[key] = new Map(); }); // force these rows to be treated as new on next save
+    if(settingsUnseeded) lastSyncedSnapshot.__settings = {json: undefined, updatedAt: null};
+    if(session && (unseeded.size>0 || settingsUnseeded)){
+      // genuinely fresh database (or a table that's still empty) — persist the in-code defaults now,
+      // one atomic row insert per record, so future saves have something to diff against
+      await saveData();
+    }
+  }catch(e){ console.error('loadData failed:', e); /* fall back to in-memory defaults */ }
+}
+let lastSaveAt = 0;
+async function saveData(){
+  try{
+    const prev = lastSyncedSnapshot || snapshotState();
+    const ops = []; // {key, id, kind, promise}
+    Object.keys(TABLE_MAP).forEach(key=>{
+      const table = TABLE_MAP[key];
+      const prevMap = prev[key] || new Map();
+      const curArr = Array.isArray(state[key]) ? state[key] : [];
+      const curIds = new Set();
+      curArr.forEach(r=>{
+        if(!r || !r.id) return;
+        curIds.add(r.id);
+        const prevEntry = prevMap.get(r.id);
+        const js = JSON.stringify(r);
+        if(!prevEntry || prevEntry.json !== js){
+          // no prevEntry (brand-new record) or unknown updatedAt (e.g. just seeded) → nothing to check against yet
+          const expected = prevEntry ? prevEntry.updatedAt : null;
+          ops.push({key, id:r.id, kind:'upsert', promise: dbUpsertRow(table, r.id, r, expected)});
+        }
+      });
+      prevMap.forEach((_, id)=>{ if(!curIds.has(id)) ops.push({key, id, kind:'delete', promise: dbDeleteRow(table, id)}); });
+    });
+    const settingsJs = JSON.stringify({accounts:state.accounts, authMigrated:state.authMigrated, announcement:state.announcement, trainingTopics:state.trainingTopics});
+    if(prev.__settings.json !== settingsJs){
+      ops.push({key:'__settings', id:'main', kind:'upsert', promise: dbUpsertRow('app_settings','main', {accounts:state.accounts, authMigrated:state.authMigrated, announcement:state.announcement, trainingTopics:state.trainingTopics}, prev.__settings.updatedAt)});
+    }
+    const results = await Promise.all(ops.map(o=>o.promise));
+    lastSaveAt = Date.now();
+    // Rebuild the snapshot from current state, then stamp in the real server updated_at for whatever we just wrote successfully.
+    lastSyncedSnapshot = snapshotState();
+    const conflicts = [];
+    results.forEach((res, i)=>{
+      const o = ops[i];
+      if(res && res.conflict){ conflicts.push(o); return; }
+      if(!res || !res.ok || o.kind==='delete') return;
+      if(o.key==='__settings'){ lastSyncedSnapshot.__settings.updatedAt = res.updatedAt; return; }
+      const entry = lastSyncedSnapshot[o.key].get(o.id);
+      if(entry) entry.updatedAt = res.updatedAt;
+    });
+    if(conflicts.length) await resolveSaveConflicts(conflicts);
+  }catch(e){ console.error('saveData failed:', e); showToast('Could not save — check your Supabase connection'); }
+}
+// Someone else saved the exact same row between our last sync and now. Pull their version in so we don't
+// keep clobbering it on every retry, and tell the person so they can knowingly redo their change if still needed.
+async function resolveSaveConflicts(conflicts){
+  const labels = [];
+  for(const c of conflicts){
+    if(c.key==='__settings'){
+      const { data } = await sbClient.from('app_settings').select('data,updated_at').eq('id','main').single();
+      if(data){
+        state.accounts = data.data.accounts || state.accounts;
+        state.authMigrated = !!data.data.authMigrated;
+        lastSyncedSnapshot.__settings = {json: JSON.stringify({accounts:state.accounts, authMigrated:state.authMigrated, announcement:state.announcement, trainingTopics:state.trainingTopics}), updatedAt: data.updated_at};
+      }
+      labels.push('Account settings');
+      continue;
+    }
+    const table = TABLE_MAP[c.key];
+    const { data } = await sbClient.from(table).select('data,updated_at').eq('id', c.id).maybeSingle();
+    if(data){
+      const rec = {...data.data, id: data.data.id || c.id};
+      const arr = state[c.key];
+      const idx = arr.findIndex(r=>r.id===rec.id);
+      if(idx>=0) arr[idx]=rec; else arr.push(rec);
+      lastSyncedSnapshot[c.key].set(rec.id, {json: JSON.stringify(rec), updatedAt: data.updated_at});
+      labels.push(rec.title || rec.name || rec.text || rec.program || c.id);
+    } else {
+      // the record was deleted by someone else in the meantime
+      state[c.key] = state[c.key].filter(r=>r.id!==c.id);
+      lastSyncedSnapshot[c.key].delete(c.id);
+      labels.push(c.id);
+    }
+  }
+  showToast(conflicts.length===1
+    ? `Someone else just updated this at the same time — your view has been refreshed with their version. Please redo your change if still needed.`
+    : `Someone else just updated ${conflicts.length} of these records at the same time — your view has been refreshed. Please redo your changes if still needed.`);
+  render();
+}
+async function loadSession(){
+  try{
+    const raw = localStorage.getItem('pms_session_v1');
+    if(raw) session = JSON.parse(raw);
+  }catch(e){ session = null; }
+}
+async function saveSession(){
+  try{ localStorage.setItem('pms_session_v1', JSON.stringify(session)); }catch(e){}
+}
+async function clearSession(){
+  session = null;
+  loginState.error='';
+  try{ localStorage.removeItem('pms_session_v1'); }catch(e){}
+  if(state.authMigrated){ try{ await sbClient.auth.signOut(); }catch(e){} }
+  renderApp();
+}
+function showToast(msg){
+  const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show');
+  clearTimeout(window.__toastT); window.__toastT=setTimeout(()=>t.classList.remove('show'),2400);
+}
+
+const TIER_PROFILES = {
+  associate: {
+    label:'LXD Associate',
+    intro:'The entry tier of the design track — builds core craft under direct senior guidance.',
+    items:[
+      {code:'C1', name:'Design Mastery', text:'Produces deliverables that reflect a real understanding of the four Skills Bank design philosophies, though still under senior guidance. Work is learner-relevant and application-oriented, with design decisions that are sound but still developing.'},
+      {code:'C2', name:'Learning Solution Consulting', text:'Joins client briefings with senior support, takes structured notes, asks clarifying questions when guided, and turns clear briefs into outlines under supervision.'},
+      {code:'C3', name:'Professional Practice', text:'Business awareness is still forming. Communicates professionally, follows structured process with support, and responds constructively to feedback.'},
+      {code:'C4', name:'Operational Discipline', text:'Follows operational standards with occasional reminders. Files are correct most of the time and deadlines are generally met.'},
+      {code:'C5', name:'Collaborative Contribution', text:'Takes part in team activities, shares learnings, supports peers when capacity allows, and stays open to mentoring.'},
+    ]
+  },
+  specialist: {
+    label:'LXD Specialist',
+    intro:'Works independently on standard-complexity briefs and starts taking broader ownership.',
+    items:[
+      {code:'C1', name:'Design Mastery', text:'Applies the four design philosophies confidently and independently on standard-complexity briefs. Work is consistently learner-relevant and transfer-focused, with revisions within normal range.'},
+      {code:'C2', name:'Learning Solution Consulting', text:'Leads standard client briefings independently, asks the right questions to uncover the real need behind the request, and produces outlines without supervision.'},
+      {code:'C3', name:'Professional Practice', text:'Has clear business awareness and a consultative presence with clients. Brings creative thinking to standard briefs, follows process independently, and stays current with the L&D market.'},
+      {code:'C4', name:'Operational Discipline', text:'Operates independently in most situations. Any gaps that appear under heavy workload are self-corrected quickly. Reliable, with no friction created for the team.'},
+      {code:'C5', name:'Collaborative Contribution', text:'Shares knowledge proactively, supports peers across tiers, and contributes to unit initiatives beyond their own project load.'},
+    ]
+  },
+  senior: {
+    label:'Senior LXD',
+    intro:'The top design tier — sets the benchmark that the rest of the unit is measured against.',
+    items:[
+      {code:'C1', name:'Design Mastery', text:'Embodies the four design philosophies without prompting, across every deliverable type and complexity level. Design decisions are deliberate and defensible, with minimal revision.'},
+      {code:'C2', name:'Learning Solution Consulting', text:'Leads client briefings with full confidence and independence, surfaces the real performance gap, and distinguishes training problems from non-training ones.'},
+      {code:'C3', name:'Professional Practice', text:'Thinks strategically about the business, acts as a trusted client partner, drives innovation, and challenges safe solutions.'},
+      {code:'C4', name:'Operational Discipline', text:'Operates without reminders across every standard. Files are always correct, deadlines are met with early risk flags, and handoffs are clean.'},
+      {code:'C5', name:'Collaborative Contribution', text:'Collective contribution is simply part of how they work — sharing knowledge proactively and mentoring through both formal and informal channels.'},
+    ]
+  }
+};
+const JD_PROFILES = {
+  associate: {
+    title:'LXD Associate',
+    purpose:'Builds foundational instructional design craft under senior guidance, producing high-quality learning deliverables across standard content types.',
+    responsibilities:[
+      'Design and develop Activities & Simulations, Assessments, and written Facilitator Guides for standard-complexity briefs',
+      'Support Training PPT design as directed by the Team Leader',
+      'Join client briefings with senior support and take structured notes',
+      'Apply Skills Bank\'s four design philosophies and quality standards in every deliverable',
+      'Take on feedback from Domain 1 quality reviews and mentoring sessions',
+      'Meet agreed delivery timelines and maintain correct file and version discipline',
+    ],
+    reportsTo:'LD Team Leader',
+  },
+  specialist: {
+    title:'LXD Specialist',
+    purpose:'Works independently across standard-complexity briefs, owning the full design cycle from client briefing to final deliverable, and begins leading Board Game and Competency Mapping projects.',
+    responsibilities:[
+      'Lead Training PPT, Activities & Simulations, Assessments, and Facilitator Guide design end-to-end',
+      'Lead or co-lead Board Game Design and Competency Mapping projects',
+      'Run standard client briefings independently and translate them into design briefs without supervision',
+      'Support Senior LXDs on Training Outlines, Leadership Programs, and Signature Topics',
+      'Bring creative, consultative input to client conversations',
+      'Mentor Associates and share knowledge across the unit',
+    ],
+    reportsTo:'LD Team Leader',
+  },
+  senior: {
+    title:'Senior LXD',
+    purpose:'Owns the most complex and highest-stakes deliverables in the unit, leads client relationships end-to-end, and sets the quality benchmark other tiers are measured against.',
+    responsibilities:[
+      'Lead Training Outlines, Leadership/Executive Program design, and Client Briefings',
+      'Lead Signature Topic / CPD Certification content under Quality Lead sponsorship',
+      'Diagnose whether a client request is genuinely a training problem before designing a solution',
+      'Model and uphold the four design philosophies without prompting, across every deliverable type',
+      'Mentor Specialists and Associates; contribute to unit-wide capability building',
+      'Support advancement reviews and quality benchmarking for the design track',
+    ],
+    reportsTo:'LD Team Leader',
+  },
+};
+const TITLE_OPTIONS = ['LXD Associate','LXD Specialist','Sr LXD'];
+function detectTier(role){
+  if(!role) return null;
+  const r = role.toLowerCase();
+  if(r.includes('sr') || r.includes('senior')) return 'senior';
+  if(r.includes('specialist')) return 'specialist';
+  if(r.includes('assoc')) return 'associate';
+  return null;
+}
+
+/* ============ derived data ============ */
+function employeeById(id){ return state.employees.find(e=>e.id===id); }
+function typeById(id){ return state.taskTypes.find(t=>t.id===id); }
+function tasksFor(empId){ return state.tasks.filter(t=>t.assigneeId===empId); }
+
+const HOURS_PER_DAY = 8; // standard working day — used to convert the day-based deadline gap into hours
+function computeTaskHoursDiff(task){
+  if(task.status!=='done' || !task.completedDate) return null;
+  const days = businessDayDiff(task.deadline, task.completedDate); // + early, - late — working days only (Fri/Sat excluded)
+  return Math.round(days * HOURS_PER_DAY * 10)/10;
+}
+function fmtHours(n){
+  const r = Math.round(Math.abs(n||0)*10)/10;
+  return (Number.isInteger(r) ? String(r) : r.toFixed(1))+'h';
+}
+function timeBalanceBadge(hours){
+  const h = Math.round((hours||0)*10)/10;
+  if(h>0) return `<span class="badge pos">+${fmtHours(h)} Buffer</span>`;
+  if(h<0) return `<span class="badge neg">${fmtHours(h)} Shrinkage</span>`;
+  return `<span class="badge zero">On pace</span>`;
+}
+function monthLabelFromKey(k){
+  const [y,m] = k.split('-');
+  return MONTH_NAMES[Number(m)]+' '+y;
+}
+function employeeMonthlyTime(empId){
+  const done = tasksFor(empId).filter(t=>t.status==='done' && t.completedDate);
+  const byMonth = {};
+  done.forEach(t=>{
+    const k = monthKey(t.completedDate);
+    byMonth[k] = (byMonth[k]||0) + (computeTaskHoursDiff(t)||0);
+  });
+  return Object.keys(byMonth).sort().map(k=>({key:k, label: monthLabelFromKey(k), netHours: Math.round(byMonth[k]*10)/10}));
+}
+function employeeMonitoringHours(empId, mKey){
+  return state.monitoringLogs
+    .filter(m=>m.employeeId===empId && (!mKey || monthKey(m.date)===mKey) && (m.status==='approved' || m.status===undefined))
+    .reduce((s,m)=>s+(Number(m.hours)||0), 0);
+}
+function employeeMonitoringHoursMonthlyHistory(empId){
+  const logs = state.monitoringLogs.filter(m=>m.employeeId===empId && (m.status==='approved' || m.status===undefined));
+  const byMonth = {};
+  logs.forEach(m=>{ const k=monthKey(m.date); byMonth[k]=(byMonth[k]||0)+(Number(m.hours)||0); });
+  return Object.keys(byMonth).sort().map(k=>({key:k, label:monthLabelFromKey(k), hours:Math.round(byMonth[k]*10)/10}));
+}
+function computeHeroesScore(empId, period){
+  const todayKey = monthKey(todayStr());
+  const isYtd = period==='ytd';
+  const mKey = isYtd? todayKey : (period || todayKey); // mKey is still used as the "as of" reference month for YTD's upper bound
+  const yearPrefix = todayKey.slice(0,4); // YTD always means the current calendar year, regardless of which month is being browsed
+  const inPeriod = (dateStr)=>{
+    if(!dateStr) return false;
+    const k = monthKey(dateStr);
+    return isYtd? (k.slice(0,4)===yearPrefix && k<=todayKey) : (k===mKey);
+  };
+  const monthKeyInPeriod = (mk)=> isYtd? (mk.slice(0,4)===yearPrefix && mk<=todayKey) : (mk===mKey);
+  const isLiveCurrentMonth = !isYtd && mKey===todayKey; // only the real "right now" gets the no-data-yet safety net below
+
+  // 1. Commitment (25% total) — split evenly between Attendance discipline and Delivery-deadline reliability (Buffering/Shrinkage Time).
+  // Attendance is unrelated to leave requests (Annual/Sick/approved Late/approved Leave Early) — it's built purely from unauthorized late-arrival / early-departure hours the Team Lead logs manually.
+  const unauthorizedHours = state.attendanceLogs.filter(a=>a.employeeId===empId && monthKeyInPeriod(a.month)).reduce((s,a)=>s+(Number(a.hours)||0),0);
+  const attendanceScore = Math.max(0, 100 - unauthorizedHours*10);
+  const netHours = isYtd
+    ? employeeMonthlyTime(empId).filter(m=>monthKeyInPeriod(m.key)).reduce((s,m)=>s+m.netHours,0)
+    : (employeeMonthlyTime(empId).find(m=>m.key===mKey)?.netHours || 0);
+  const bufferingScore = Math.max(0, Math.min(100, 50 + netHours*2));
+  const timeScore = Math.round((attendanceScore + bufferingScore) / 2);
+
+  // 2a. Quality of work — Domain 1 reviews. When a person has multiple reviews in-period, each one is weighted by
+  // its task's estimated size (hours) — a 10-day deliverable pulls the average far more than a 1-hour meeting review,
+  // so a small easy task can't drag down (or prop up) the score of someone whose real work this period was the big one.
+  // Falls back to the all-time weighted avg only for the live current month when nothing's logged yet.
+  const weightedQualityAvg = (revs)=>{
+    let sumWeighted=0, sumWeight=0;
+    revs.forEach(r=>{
+      const relatedTask = state.tasks.find(t=>t.reviewId===r.id);
+      const w = relatedTask? Math.max(taskEstimatedHours(relatedTask), 0.1) : 1; // tiny floor so a 0h task never zeroes out the weight
+      sumWeighted += r.pct*w; sumWeight += w;
+    });
+    return sumWeight>0? sumWeighted/sumWeight : null;
+  };
+  const reviewsInPeriod = state.qualityReviews.filter(r=>r.employeeId===empId && inPeriod(r.date));
+  const allReviews = state.qualityReviews.filter(r=>r.employeeId===empId);
+  const qualityScore = reviewsInPeriod.length? weightedQualityAvg(reviewsInPeriod)
+    : (isLiveCurrentMonth && allReviews.length? weightedQualityAvg(allReviews) : null);
+  const hasQuality = qualityScore!=null;
+
+  // 2b. Quality of work — Training Monitor hours, this period, normalized to 0-100 (4+ hours/month equivalent = full marks).
+  // No hours logged at all this period = no data (weight redistributes below), not a scored zero.
+  const monitoringHrs = state.monitoringLogs.filter(m=>m.employeeId===empId && inPeriod(m.date) && (m.status==='approved' || m.status===undefined)).reduce((s,m)=>s+(Number(m.hours)||0),0);
+  const hasMonitoring = monitoringHrs>0;
+  const MONITOR_FLOOR_HRS = 4, MONITOR_CEILING_HRS = 12;
+  const monitorScore = !hasMonitoring ? null : (monitoringHrs<=MONITOR_FLOOR_HRS ? 0
+    : monitoringHrs>=MONITOR_CEILING_HRS ? 100
+    : ((monitoringHrs-MONITOR_FLOOR_HRS)/(MONITOR_CEILING_HRS-MONITOR_FLOOR_HRS))*100);
+
+  // 2c. Quality of work — Client Satisfaction, this employee's own logged scores (1-5 stars -> 0-100).
+  // No score logged this period = no data (weight redistributes below), not a scored zero.
+  const satisfactionInPeriod = state.clientSatisfaction.filter(c=>c.employeeId===empId && inPeriod(c.date));
+  const allSatisfaction = state.clientSatisfaction.filter(c=>c.employeeId===empId);
+  const satisfactionRaw = satisfactionInPeriod.length? (satisfactionInPeriod.reduce((s,c)=>s+c.score,0)/satisfactionInPeriod.length)
+    : (isLiveCurrentMonth && allSatisfaction.length? (allSatisfaction.reduce((s,c)=>s+c.score,0)/allSatisfaction.length) : null);
+  const hasSatisfaction = satisfactionRaw!=null;
+  const satisfactionScore = hasSatisfaction? (satisfactionRaw/5)*100 : null;
+
+  // 2d. Quality of work — Delivery Compliance: how well the handoff steps (pack sent, trainer briefed, monitored...) were
+  // followed for this period's live training deliveries. Only counts deliveries logged against this employee's own tasks.
+  const deliveriesInPeriod = state.deliveries.filter(d=>d.employeeId===empId && inPeriod(d.date));
+  const hasDelivery = deliveriesInPeriod.length>0;
+  const deliveryScore = hasDelivery? deliveriesInPeriod.reduce((s,d)=>s+d.checkRate,0)/deliveriesInPeriod.length : null;
+
+  // 3. Team recognition — High Fives received in-period (capped so a couple don't dominate the score)
+  const highFives = state.shoutouts.filter(s=>s.toEmployeeId===empId && inPeriod(s.date)).length;
+  const recognitionScore = Math.min(100, highFives*30);
+
+  // 4. Growth & contribution — Stretch assignments completed + Innovation (New Methodology / Tool Pilot) completed, THIS PERIOD —
+  // resets each month like every other component, so work from months ago doesn't keep inflating every future month's score.
+  const stretchCount = tasksFor(empId).filter(t=>t.status==='done' && t.stretch && inPeriod(t.completedDate)).length;
+  const innovationCount = tasksFor(empId).filter(t=>t.status==='done' && t.typeId==='tt9' && inPeriod(t.completedDate)).length;
+  const growthScore = Math.min(100, stretchCount*10 + innovationCount*15);
+
+  // 5. Effort delivered — total estimated hours of work actually completed this period, linear against a full working
+  // month (160h = 20 days × 8h = 100). Separate from Quality on purpose: a big task and a small task scored the same
+  // still show equal Quality, but the person who delivered more real hours earns more here — a distinct dimension.
+  const EFFORT_TARGET_HOURS = 160;
+  const hoursDelivered = tasksFor(empId).filter(t=>t.status==='done' && inPeriod(t.completedDate)).reduce((s,t)=>s+taskEstimatedHours(t),0);
+  const effortScore = Math.min(100, (hoursDelivered/EFFORT_TARGET_HOURS)*100);
+
+  // Quality of Work is 55% total: Domain 1 (25) + Delivery Compliance (20) + Training Monitor (5) + Client Satisfaction (5).
+  // Whichever of the four has no data this period redistributes its weight proportionally across whatever IS present,
+  // so nobody is unfairly zeroed out on a metric that simply doesn't have data yet — same rule for all four, consistently.
+  const baseWeights = {time:0.20, recognition:0.05, growth:0.05, effort:0.15}; // always present — sums to 0.45
+  const QUALITY_MAX = 0.25, DELIVERY_MAX = 0.20, MONITOR_MAX = 0.05, SATISFACTION_MAX = 0.05; // + baseWeights (0.45) = 1.00
+  const presentWeights = {...baseWeights};
+  let redistributePool = 0;
+  if(hasQuality) presentWeights.quality = QUALITY_MAX; else redistributePool += QUALITY_MAX;
+  if(hasDelivery) presentWeights.delivery = DELIVERY_MAX; else redistributePool += DELIVERY_MAX;
+  if(hasMonitoring) presentWeights.monitor = MONITOR_MAX; else redistributePool += MONITOR_MAX;
+  if(hasSatisfaction) presentWeights.satisfaction = SATISFACTION_MAX; else redistributePool += SATISFACTION_MAX;
+  const presentSum = Object.values(presentWeights).reduce((s,v)=>s+v,0);
+  const weights = {quality:0, delivery:0, monitor:0, satisfaction:0};
+  Object.keys(presentWeights).forEach(k=> weights[k] = presentWeights[k] + (presentWeights[k]/presentSum)*redistributePool);
+
+  const total = Math.round(
+    timeScore*weights.time +
+    (hasQuality?qualityScore:0)*weights.quality +
+    (hasMonitoring?monitorScore:0)*weights.monitor +
+    (hasSatisfaction?satisfactionScore:0)*weights.satisfaction +
+    recognitionScore*weights.recognition +
+    growthScore*weights.growth +
+    effortScore*weights.effort +
+    (hasDelivery?deliveryScore:0)*weights.delivery
+  );
+
+  // A single blended 0-100 "Quality of Work" figure — how much of that whole bucket they're earning, for a clean view
+  const qualityBucketWeight = weights.quality + weights.monitor + weights.satisfaction + weights.delivery;
+  const qualityOfWorkScore = qualityBucketWeight>0
+    ? Math.round((((hasQuality?qualityScore:0)*weights.quality) + ((hasMonitoring?monitorScore:0)*weights.monitor) + ((hasSatisfaction?satisfactionScore:0)*weights.satisfaction) + ((hasDelivery?deliveryScore:0)*weights.delivery)) / qualityBucketWeight)
+    : 0;
+
+  return {
+    total, weights, hasQuality, hasDelivery, hasMonitoring, hasSatisfaction,
+    qualityOfWorkScore,
+    timeScore: Math.round(timeScore), unauthorizedHours, attendanceScore: Math.round(attendanceScore), bufferingScore: Math.round(bufferingScore), netHours,
+    qualityScore: hasQuality? Math.round(qualityScore) : null,
+    monitorScore: hasMonitoring? Math.round(monitorScore) : null, monitoringHrs,
+    satisfactionScore: hasSatisfaction? Math.round(satisfactionScore) : null, satisfactionRaw: satisfactionRaw!=null?Math.round(satisfactionRaw*10)/10:null,
+    deliveryScore: hasDelivery? Math.round(deliveryScore) : null, deliveryCount: deliveriesInPeriod.length,
+    recognitionScore: Math.round(recognitionScore), highFives,
+    growthScore: Math.round(growthScore), stretchCount, innovationCount,
+    effortScore: Math.round(effortScore), hoursDelivered: Math.round(hoursDelivered*10)/10,
+  };
+}
+function heroesRanking(period){
+  return state.employees.map(e=>({emp:e, score: computeHeroesScore(e.id, period)})).sort((a,b)=>b.score.total-a.score.total);
+}
+function computeEomCandidates(mKey){
+  return heroesRanking().map(r=>{
+    const monthly = employeeMonthlyTime(r.emp.id).find(m=>m.key===mKey);
+    return {emp:r.emp, qualityAvg:r.score.qualityScore, netHours: monthly? monthly.netHours : 0, combined:r.score.total};
+  })
+    .filter(c=>c.qualityAvg!=null)
+    .sort((a,b)=>b.combined-a.combined);
+}
+
+const WEEKLY_CAPACITY_HOURS = 40; // standard working week assumption, used to translate queued work into a workload signal
+function taskEstimatedHours(t){
+  const type = typeById(t.typeId);
+  if(!type) return 0;
+  const mode = (t.mode && taskTypeMode(type, t.mode)) || type.modes[0];
+  const days = (mode && mode.days!=null) ? mode.days : 0;
+  return days * HOURS_PER_DAY;
+}
+function employeeWorkloadHours(empId){
+  return tasksFor(empId).filter(t=>t.status==='open').reduce((s,t)=>s+taskEstimatedHours(t),0);
+}
+function employeeWorkloadWeeks(empId){
+  return employeeWorkloadHours(empId)/WEEKLY_CAPACITY_HOURS;
+}
+function workloadStatus(weeks){
+  if(weeks>2) return {label:'Overloaded', cls:'neg'};
+  if(weeks>1) return {label:'Busy', cls:'zero'};
+  return {label:'Comfortable', cls:'pos'};
+}
+
+function computeWeekBuckets(n){
+  const start0 = getWeekStart(todayStr());
+  const weeks = [];
+  for(let i=0;i<n;i++){
+    const start = addDays(start0, i*7);
+    const end = addDays(start, 6);
+    const d = new Date(start+'T00:00:00');
+    weeks.push({start, end, label: (i===0?'This wk':d.toLocaleDateString('en-GB',{day:'numeric',month:'short'}))});
+  }
+  return weeks;
+}
+function tasksInWeek(empId, weekStart, weekEnd){
+  return tasksFor(empId).filter(t=>t.status==='open' && t.deadline>=weekStart && t.deadline<=weekEnd);
+}
+function employeeLeaveHoursInWeek(empId, weekStart, weekEnd){
+  const approved = state.requests.filter(r=>r.employeeId===empId && r.status==='approved');
+  let hours = 0;
+  approved.forEach(r=>{
+    if(r.type==='annual_leave' || r.type==='sick'){
+      const rStart = r.startDate, rEnd = r.endDate || r.startDate;
+      const s = rStart > weekStart ? rStart : weekStart;
+      const e = rEnd < weekEnd ? rEnd : weekEnd;
+      if(s<=e) hours += businessDaysInclusive(s,e) * HOURS_PER_DAY;
+    } else if(r.type==='leave_early' || r.type==='late'){
+      if(r.startDate>=weekStart && r.startDate<=weekEnd) hours += Number(r.hours)||1;
+    } else if(r.type==='worked_day_off'){
+      // the compDate is the day off taken in exchange — reduces capacity that week
+      if(r.compDate && r.compDate>=weekStart && r.compDate<=weekEnd) hours += HOURS_PER_DAY;
+      // the startDate is the original day off they actually worked — adds capacity that week
+      if(r.startDate>=weekStart && r.startDate<=weekEnd) hours -= HOURS_PER_DAY;
+    }
+  });
+  return hours;
+}
+function employeeLeaveDaysInWeek(empId, weekStart, weekEnd){
+  return employeeLeaveHoursInWeek(empId, weekStart, weekEnd) / HOURS_PER_DAY;
+}
+function employeeWeekCapacityHours(empId, weekStart, weekEnd){
+  return Math.max(0, WEEKLY_CAPACITY_HOURS - employeeLeaveHoursInWeek(empId, weekStart, weekEnd));
+}
+function miniScoreBar(score, color){
+  const pct = Math.max(0, Math.min(100, score));
+  return `<div style="width:56px;height:6px;background:var(--surface-2);border-radius:3px;overflow:hidden">
+    <div style="width:${pct}%;height:100%;background:var(--${color})"></div>
+  </div>`;
+}
+function heatColor(ratio){
+  const r = Math.max(0, Math.min(1, ratio));
+  if(r<=0) return 'var(--surface-2)';
+  const alpha = 0.12 + r*0.72;
+  return `rgba(242,106,68,${alpha.toFixed(2)})`;
+}
+function employeeHighFivesReceived(empId){
+  return state.shoutouts.filter(s=>s.toEmployeeId===empId).sort((a,b)=>new Date(b.date)-new Date(a.date));
+}
+function employeeHighFivesMonthlyHistory(empId){
+  const received = state.shoutouts.filter(s=>s.toEmployeeId===empId);
+  const byMonth = {};
+  received.forEach(s=>{ const k=monthKey(s.date); byMonth[k]=(byMonth[k]||0)+1; });
+  return Object.keys(byMonth).sort().map(k=>({key:k, label:monthLabelFromKey(k), count:byMonth[k]}));
+}
+function employeeHighFivesThisMonth(empId, mKeyOverride){
+  const mKey = mKeyOverride || monthKey(todayStr());
+  return state.shoutouts.filter(s=>s.toEmployeeId===empId && monthKey(s.date)===mKey).length;
+}
+function hasRecognition(empId){
+  return employeeHighFivesThisMonth(empId) > 3;
+}
+function renderWorkloadHeatmap(weekCount, valueFn, opts){
+  opts = opts||{};
+  const weeks = computeWeekBuckets(weekCount);
+  const cells = state.employees.map(e=> weeks.map(w=>valueFn(e.id, w)));
+  const maxVal = Math.max(1, ...cells.flat());
+  if(!state.employees.length) return emptyState('◍','No team members yet','Add your first team member.');
+  return `
+    <div style="overflow-x:auto">
+      <table>
+        <thead><tr><th>Member</th>${weeks.map(w=>`<th style="text-align:center">${escapeHtml(w.label)}</th>`).join('')}</tr></thead>
+        <tbody>
+          ${state.employees.map((e,i)=>`<tr>
+            <td><div class="who">${avatarHTML(e)}<div class="nm">${escapeHtml(e.name.split(' ')[0])}</div></div></td>
+            ${weeks.map((w,j)=>{
+              const val = cells[i][j];
+              const ratio = val/maxVal;
+              const onLeave = opts.leaveAware && employeeLeaveDaysInWeek(e.id, w.start, w.end) > 0;
+              return `<td style="background:${heatColor(ratio)};text-align:center;font-weight:700;border-radius:6px;min-width:52px" ${onLeave?'title="Has approved leave this week"':''}>${val? (opts.suffix? val+opts.suffix : val) : ''}${onLeave?' 🏖':''}</td>`;
+            }).join('')}
+          </tr>`).join('')}
+        </tbody>
+      </table>
+    </div>
+    <div style="display:flex;align-items:center;gap:8px;margin-top:14px;font-size:11.5px;color:var(--text-faint)">
+      <span>Light</span>
+      <div style="flex:1;max-width:160px;height:8px;border-radius:4px;background:linear-gradient(90deg, var(--surface-2), rgba(242,106,68,.84))"></div>
+      <span>Heavy</span>
+      ${opts.leaveAware? `<span style="margin-left:10px">🏖 = approved leave that week (capacity reduced accordingly)</span>` : ''}
+    </div>
+  `;
+}
+function renderTeamWorkloadHeatmap(weekCount){
+  const weeks = computeWeekBuckets(weekCount);
+  const cells = weeks.map(w=>{
+    const hours = state.employees.reduce((s,e)=> s + tasksInWeek(e.id, w.start, w.end).reduce((s2,t)=>s2+taskEstimatedHours(t),0), 0);
+    const capacity = state.employees.reduce((s,e)=> s + employeeWeekCapacityHours(e.id, w.start, w.end), 0);
+    const onLeaveCount = state.employees.filter(e=>employeeLeaveDaysInWeek(e.id, w.start, w.end) > 0).length;
+    const ratio = capacity>0? hours/capacity : (hours>0? 1 : 0);
+    return {...w, hours: Math.round(hours*10)/10, capacity: Math.round(capacity*10)/10, ratio, onLeaveCount};
+  });
+  if(!state.employees.length) return emptyState('◍','No team members yet','Add your first team member.');
+  return `
+    <div style="display:flex;gap:8px;overflow-x:auto;padding-bottom:4px">
+      ${cells.map(c=>{
+        const pct = Math.round(c.ratio*100);
+        return `<div style="flex:1;min-width:92px;text-align:center">
+          <div style="background:${heatColor(c.ratio)};border-radius:10px;padding:16px 8px">
+            <div style="font-family:'Cairo',sans-serif;font-weight:800;font-size:18px">${pct}%</div>
+            <div style="font-size:10.5px;color:var(--text-dim);margin-top:3px">${c.hours}h / ${c.capacity}h</div>
+          </div>
+          <div style="font-size:11px;color:var(--text-faint);margin-top:6px">${escapeHtml(c.label)}${c.onLeaveCount?` 🏖×${c.onLeaveCount}`:''}</div>
+        </div>`;
+      }).join('')}
+    </div>
+    <div style="display:flex;align-items:center;gap:8px;margin-top:14px;font-size:11.5px;color:var(--text-faint)">
+      <span>Light</span>
+      <div style="flex:1;max-width:160px;height:8px;border-radius:4px;background:linear-gradient(90deg, var(--surface-2), rgba(242,106,68,.84))"></div>
+      <span>Heavy</span>
+      <span style="margin-left:10px">🏖×N = members with approved leave that week — team capacity for that week is reduced accordingly</span>
+    </div>
+  `;
+}
+
+const REQUEST_TYPES = [
+  {key:'annual_leave', label:'Annual Leave', mode:'range'},
+  {key:'sick', label:'Sick Leave', mode:'range'},
+  {key:'leave_early', label:'Leave Early', mode:'datetime'},
+  {key:'late', label:'Arriving Late', mode:'datetime'},
+  {key:'worked_day_off', label:'Worked on a Day Off (Comp Day)', mode:'comp'},
+];
+const WEEKDAY_NAMES = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+function requestTypeLabel(key){ return (REQUEST_TYPES.find(t=>t.key===key)||{}).label || key; }
+function requestDayCount(r){
+  if(!r.startDate) return 0;
+  const end = r.endDate || r.startDate;
+  return Math.min(366, businessDaysInclusive(r.startDate, end)); // no real annual leave request spans more than a year
+}
+function employeeLeaveStats(empId){
+  const approved = state.requests.filter(r=>r.employeeId===empId && r.type==='annual_leave' && r.status==='approved');
+  const used = approved.reduce((s,r)=>s+requestDayCount(r),0);
+  const balance = employeeById(empId)?.annualLeaveBalance || 0;
+  return {used, balance, remaining: balance-used};
+}
+function applyApprovedRequest(r){
+  // annual_leave and sick just get recorded; balance is derived live from approved annual_leave requests.
+  // worked_day_off grants
